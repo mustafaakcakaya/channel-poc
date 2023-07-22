@@ -1,48 +1,36 @@
 package main
 
-import (
-	"fmt"
-)
-
-// Customer havuzda depolanacak müşteri veri yapısıdır
-type Customer struct {
-	ID        int
-	FirstName string
-	LastName  string
-	Address   string
-}
+import "time"
 
 func main() {
-	// Customer kanalı oluşturulur
-	customerChan := make(chan *Customer)
+	a := CallFibonacciFuncWithChannel(10)
+	println(a)
+}
 
-	// Havuzda müşteri verilerini depolamak için bir goroutine oluşturulur
+func CallFibonacciFuncWithChannel(count int) []int {
+	resultCh := make(chan []int, count)
+	result := make([]int, count)
+	for i := 1; i <= count; i++ {
+		go func(index int) {
+			resultCh <- []int{index, CalculateFibonacci(index)}
+		}(i)
+	}
+
 	go func() {
-		// Havuzda bir Customer nesnesi oluşturulur
-		customer := &Customer{
-			ID:        1,
-			FirstName: "John",
-			LastName:  "Doe",
-			Address:   "123 Main St",
+		for data := range resultCh {
+			result[data[0]-1] = data[1]
+			println(data)
 		}
-
-		// Customer kanalına müşteri bilgileri gönderilir
-		customerChan <- customer
 	}()
 
-	// Havuzdaki müşteri verilerini kullanmak için bir goroutine daha oluşturulur
-	go func() {
-		// Customer kanalından müşteri bilgileri alınır
-		customerFromChan := <-customerChan
-		fmt.Println("Havuzdan Alınan Müşteri:", customerFromChan)
+	time.Sleep(time.Second * 5)
 
-		// Havuzdaki müşteri bilgileri kullanılır
-		// ...
+	return result
+}
 
-		// Kanal kapatılır
-		close(customerChan)
-	}()
-
-	// Kanalın kapatılmasını bekler
-	<-customerChan
+func CalculateFibonacci(n int) int {
+	if n <= 1 {
+		return n
+	}
+	return CalculateFibonacci(n-1) + CalculateFibonacci(n-2)
 }
