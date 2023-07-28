@@ -1,32 +1,102 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+	"testing"
+)
+
+const (
+	numWorkers = 1000
+	numTasks   = 10000
+)
+
+func workWithPool(pool *sync.Pool) {
+	for i := 0; i < numTasks; i++ {
+		obj := pool.Get()
+		// Simulate some work with the object
+		_ = obj
+		pool.Put(obj)
+	}
+}
+
+func workWithWaitGroup(wg *sync.WaitGroup) {
+	for i := 0; i < numTasks; i++ {
+		// Simulate some work
+	}
+	wg.Done()
+}
+
+func workWithChannel(ch chan struct{}) {
+	for i := 0; i < numTasks; i++ {
+		// Simulate some work
+	}
+	ch <- struct{}{}
+}
+
+func BenchmarkPool(b *testing.B) {
+	pool := &sync.Pool{
+		New: func() interface{} {
+			return new(interface{})
+		},
+	}
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		var wg sync.WaitGroup
+		wg.Add(numWorkers)
+		for i := 0; i < numWorkers; i++ {
+			go func() {
+				workWithPool(pool)
+				wg.Done()
+			}()
+		}
+		wg.Wait()
+	}
+}
+
+func BenchmarkWaitGroup(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		var wg sync.WaitGroup
+		wg.Add(numWorkers)
+		for i := 0; i < numWorkers; i++ {
+			go func() {
+				workWithWaitGroup(&wg)
+			}()
+		}
+		wg.Wait()
+	}
+}
+
+func BenchmarkChannel(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for n := 0; n < b.N; n++ {
+		ch := make(chan struct{}, numWorkers)
+		for i := 0; i < numWorkers; i++ {
+			go func() {
+				workWithChannel(ch)
+			}()
+		}
+		// Wait for all workers to finish
+		for i := 0; i < numWorkers; i++ {
+			<-ch
+		}
+	}
+}
 
 func main() {
-	a := CallFibonacciFuncWithChannel(10)
-	fmt.Printf("%v\n", a)
-}
+	poolBenchmark := testing.Benchmark(BenchmarkPool)
+	fmt.Printf("Pool: %s\n", poolBenchmark)
 
-func CallFibonacciFuncWithChannel(count int) []int {
-	resultCh := make(chan []int, count)
-	result := make([]int, count)
-	for i := 1; i <= count; i++ {
-		go func(index int) {
-			resultCh <- []int{index, CalculateFibonacci(index)}
-		}(i)
-	}
+	wgBenchmark := testing.Benchmark(BenchmarkWaitGroup)
+	fmt.Printf("WaitGroup: %s\n", wgBenchmark)
 
-	for i := 0; i < count; i++ {
-		data := <-resultCh
-		result[data[0]-1] = data[1]
-	}
-	close(resultCh)
-	return result
-}
-
-func CalculateFibonacci(n int) int {
-	if n <= 1 || n > 10 {
-		return n
-	}
-	return CalculateFibonacci(n-1) + CalculateFibonacci(n-2)
+	channelBenchmark := testing.Benchmark(BenchmarkChannel)
+	fmt.Printf("Channel: %s\n", channelBenchmark)
 }
