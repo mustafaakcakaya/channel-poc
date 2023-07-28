@@ -1,8 +1,10 @@
 package main
 
+import "fmt"
+
 func main() {
 	a := CallFibonacciFuncWithChannel(10)
-	println(a)
+	fmt.Printf("%v\n", a)
 }
 
 func CallFibonacciFuncWithChannel(count int) []int {
@@ -14,17 +16,16 @@ func CallFibonacciFuncWithChannel(count int) []int {
 		}(i)
 	}
 
-	for data := range resultCh {
+	for i := 0; i < count; i++ {
+		data := <-resultCh
 		result[data[0]-1] = data[1]
-		println(data)
 	}
-
-	//close(resultCh)
+	close(resultCh)
 	return result
 }
 
 func CalculateFibonacci(n int) int {
-	if n <= 1 {
+	if n <= 1 || n > 10 {
 		return n
 	}
 	return CalculateFibonacci(n-1) + CalculateFibonacci(n-2)
