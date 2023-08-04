@@ -91,12 +91,39 @@ func BenchmarkChannel(b *testing.B) {
 }
 
 func main() {
-	poolBenchmark := testing.Benchmark(BenchmarkPool)
-	fmt.Printf("Pool: %s\n", poolBenchmark)
 
-	wgBenchmark := testing.Benchmark(BenchmarkWaitGroup)
-	fmt.Printf("WaitGroup: %s\n", wgBenchmark)
+	// sync.Pool oluşturuyoruz ve bağlantı nesnelerini tutacak.
+	pool := &sync.Pool{
+		New: func() interface{} {
+			println("New Creation")
+			return &Connection{}
+		},
+	}
 
-	channelBenchmark := testing.Benchmark(BenchmarkChannel)
-	fmt.Printf("Channel: %s\n", channelBenchmark)
+	// İstemci istekleri için bir döngü simüle edelim.
+	for i := 0; i < 10; i++ {
+		// Havuzdan bir bağlantı alıyoruz veya havuzda yoksa yeni bir bağlantı oluşturulacak.
+		conn := pool.Get().(*Connection)
+		conn.ID += i
+
+		// İstemci taleplerine göre işlem yapıyoruz.
+		// Burada sadece bağlantı numarasını ekrana yazdırıyoruz.
+		fmt.Println("Handling request with connection ID:", conn.ID)
+
+		// İşlem bittikten sonra bağlantıyı havuza geri bırakıyoruz.
+		//pool.Put(conn)
+	}
+
+	/*	poolBenchmark := testing.Benchmark(BenchmarkPool)
+		fmt.Printf("Pool: %s\n", poolBenchmark)
+
+		wgBenchmark := testing.Benchmark(BenchmarkWaitGroup)
+		fmt.Printf("WaitGroup: %s\n", wgBenchmark)
+
+		channelBenchmark := testing.Benchmark(BenchmarkChannel)
+		fmt.Printf("Channel: %s\n", channelBenchmark)*/
+}
+
+type Connection struct {
+	ID int
 }
